@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class KafkaTest {
 
     private KafkaBrokerClient brokerClient;
-    private final String kafkaUrl = getProps().kafkaClusterPonz();
+    private final String kafkaUrl = getProps().kafkaCluster();
 
     @BeforeEach
     void setUp() {
