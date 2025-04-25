@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-app-config
+data:
+  ENV: "application"
+  LOG_LEVEL: "INFO"
+  TEST_CONFIG_TIMEOUT: "900000"
+  CONFIG_RETRY_TIMEOUT: "60"
+  CONSUMER_POOL_DURATION: "10000"
+  PRODUCER_RECORDS_TIMEOUT: "10000"
+  KAFKA_MAX_MESSAGES_COUNT: "100"
+  
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-app-secrets
+type: Opaque
+stringData:
+  DB_URL: "jdbc:postgresql://postgres:5432/testdb"
+  DB_USERNAME: "postgres"
+  DB_PASSWORD: "postgres"
+  OPENSEARCH_URL: "http://opensearch:9200"
+  OPENSEARCH_USERNAME: "admin"
+  OPENSEARCH_PASSWORD: "admin"
+  KAFKA_CLUSTER: "kafka:9092"
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-app
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      containers:
+      - name: test-app
+        image: ${REGISTRY}/test-app:latest
+        envFrom:
+        - configMapRef:
+            name: test-app-config
+        - secretRef:
+            name: test-app-secrets
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1"
+        volumeMounts:
+        - name: test-results
+          mountPath: /app/target
+      volumes:
+      - name: test-results
+        persistentVolumeClaim:
+          claimName: test-results-pvc
+      restartPolicy: Never
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-results-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  # Test application
+  test-app:
+    build: ../../..
+    environment:
+      # General configuration
+      - ENV=application
+      - LOG_LEVEL=INFO
+      - TEST_CONFIG_TIMEOUT=900000
+      - CONFIG_RETRY_TIMEOUT=60
+      - CONSUMER_POOL_DURATION=10000
+      - PRODUCER_RECORDS_TIMEOUT=10000
+      - KAFKA_MAX_MESSAGES_COUNT=100
+
+      # Database configuration
+      - DB_URL=jdbc:postgresql://postgres:5432/testdb
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+
+      # Kafka configuration
+      - KAFKA_CLUSTER=kafka:9092
+
+      # OpenSearch configuration
+      - OPENSEARCH_URL=http://opensearch:9200
+      - OPENSEARCH_USERNAME=admin
+      - OPENSEARCH_PASSWORD=admin
+
+      # Zipkin configuration
+      - ZIPKIN_URL=http://zipkin:9411/api/v2/spans
+      - ZIPKIN_ENABLED=true
+    volumes:
+      # Mount for test results
+      - ./target:/app/target
+    depends_on:
+      - postgres
+      - kafka
+      - opensearch
+      - zipkin
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:14
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=testdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  # Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=2181
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+
+  # OpenSearch
+  opensearch:
+    image: opensearchproject/opensearch:2.11.1
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - DISABLE_SECURITY_PLUGIN=true
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  # Zipkin
+  zipkin:
+    image: openzipkin/zipkin:latest
+    ports:
+      - "9411:9411"
+
+volumes:
+  postgres-data:

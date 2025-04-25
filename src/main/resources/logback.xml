@@ -1,0 +1,15 @@
+<configuration>
+    <property resource ="properties/${env}.properties"/>
+    <property name = "log.level" value="${LOG_LEVEL}"/>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%highlight%d{HH:mm:ss.SSS} [%thread] %-5level  %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <logger name = "org.apache.kafka" level="ERROR"/>
+    <logger name = "com.jayway.jsonpath" level="ERROR"/>
+    <logger name = "jcifs" level="ERROR"/>
+    <root level="${log.level}">
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>

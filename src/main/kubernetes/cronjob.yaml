@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: test-app-cronjob
+spec:
+  # Run tests every day at midnight
+  schedule: "0 0 * * *"
+  # Keep 3 successful and 1 failed job history
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: test-app
+            image: ${REGISTRY}/test-app:latest
+            envFrom:
+            - configMapRef:
+                name: test-app-config
+            - secretRef:
+                name: test-app-secrets
+            resources:
+              requests:
+                memory: "1Gi"
+                cpu: "500m"
+              limits:
+                memory: "2Gi"
+                cpu: "1"
+            volumeMounts:
+            - name: test-results
+              mountPath: /app/target
+          volumes:
+          - name: test-results
+            persistentVolumeClaim:
+              claimName: test-results-pvc
+          restartPolicy: Never

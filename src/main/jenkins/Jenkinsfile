@@ -1,0 +1,108 @@
+pipeline {
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: test-app
+spec:
+  containers:
+  - name: maven
+    image: maven:3.9-eclipse-temurin-21
+    command:
+    - cat
+    tty: true
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1"
+    volumeMounts:
+    - name: maven-cache
+      mountPath: /root/.m2
+  volumes:
+  - name: maven-cache
+    persistentVolumeClaim:
+      claimName: maven-cache-pvc
+"""
+        }
+    }
+    
+    environment {
+        // General configuration
+        ENV = 'application'
+        LOG_LEVEL = 'INFO'
+        TEST_CONFIG_TIMEOUT = '900000'
+        CONFIG_RETRY_TIMEOUT = '60'
+        CONSUMER_POOL_DURATION = '10000'
+        PRODUCER_RECORDS_TIMEOUT = '10000'
+        KAFKA_MAX_MESSAGES_COUNT = '100'
+        
+        // Database configuration (use Jenkins credentials)
+        DB_CREDS = credentials('db-credentials')
+        DB_URL = 'jdbc:postgresql://postgres:5432/testdb'
+        DB_USERNAME = "${DB_CREDS_USR}"
+        DB_PASSWORD = "${DB_CREDS_PSW}"
+        
+        // Kafka configuration
+        KAFKA_CLUSTER = 'kafka:9092'
+        
+        // OpenSearch configuration (use Jenkins credentials)
+        OS_CREDS = credentials('opensearch-credentials')
+        OPENSEARCH_URL = 'http://opensearch:9200'
+        OPENSEARCH_USERNAME = "${OS_CREDS_USR}"
+        OPENSEARCH_PASSWORD = "${OS_CREDS_PSW}"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                container('maven') {
+                    sh 'mvn clean compile'
+                }
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                container('maven') {
+                    sh 'mvn test'
+                }
+            }
+        }
+        
+        stage('Generate Report') {
+            steps {
+                container('maven') {
+                    sh 'mvn allure:report'
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            // Archive test results
+            archiveArtifacts artifacts: 'target/allure-results/**/*', allowEmptyArchive: true
+            
+            // Publish Allure report
+            allure([
+                includeProperties: false,
+                jdk: '',
+                properties: [],
+                reportBuildPolicy: 'ALWAYS',
+                results: [[path: 'target/allure-results']]
+            ])
+        }
+    }
+}
