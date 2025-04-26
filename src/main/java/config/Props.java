@@ -92,12 +92,6 @@ public interface Props extends Config {
   @Key("API_TRUSTSTORE_PASSWORD")
   String apiTruststorePassword();
 
-  @Key("EPA_LOGIN_ENDPOINT")
-  String epaLoginEndpoint();
-
-  @Key("EPA_AUTH_TOKEN_ENDPOINT")
-  String epaAuthTokenEndpoint();
-
 
   /** OPENSEARCH */
   @Key("OPENSEARCH_URL")

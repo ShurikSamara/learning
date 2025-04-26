@@ -1,5 +1,6 @@
 package tests.api;
 
+import assertion.ApiAssertions;
 import clients.ApiClient;
 import io.qameta.allure.Description;
 import io.qameta.allure.Epic;
@@ -16,20 +17,20 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static org.hamcrest.Matchers.*;
-
 @Epic("API Tests")
 @Feature("REST API Operations")
 public class ApiTest {
 
     private ApiClient apiClient;
+    private ApiAssertions apiAssertions;
     private final String baseUrl = "https://jsonplaceholder.typicode.com";
-    
+
     @BeforeEach
     void setUp() {
         apiClient = new ApiClient();
+        apiAssertions = new ApiAssertions();
     }
-    
+
     @Test
     @DisplayName("Get user by ID")
     @Description("Test retrieves a user by ID and verifies the response")
@@ -39,7 +40,7 @@ public class ApiTest {
         String url = baseUrl + "/users/{id}";
         Map<String, String> pathParams = new HashMap<>();
         pathParams.put("id", "1");
-        
+
         // Act
         ValidatableResponse response = apiClient.sendGet(
             url,
@@ -48,16 +49,11 @@ public class ApiTest {
             new HashMap<>(),  // queryParams
             new HashMap<>()   // cookies
         );
-        
+
         // Assert
-        response
-            .statusCode(200)
-            .body("id", equalTo(1))
-            .body("name", notNullValue())
-            .body("email", notNullValue())
-            .body("address", notNullValue());
+        apiAssertions.assertUserDetails(response, 1);
     }
-    
+
     @Test
     @DisplayName("Create a new post")
     @Description("Test creates a new post and verifies the response")
@@ -72,7 +68,7 @@ public class ApiTest {
                       "}";
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
-        
+
         // Act
         ValidatableResponse response = apiClient.sendPost(
             url,
@@ -82,15 +78,11 @@ public class ApiTest {
             new HashMap<>(),  // pathParams
             new HashMap<>()   // queryParams
         );
-        
+
         // Assert
-        response
-            .body("title", equalTo("Test Post"))
-            .body("body", equalTo("This is a test post"))
-            .body("userId", equalTo(1))
-            .body("id", notNullValue());
+        apiAssertions.assertPostDetails(response, null, "Test Post", "This is a test post", 1);
     }
-    
+
     @Test
     @DisplayName("Update a post")
     @Description("Test updates an existing post and verifies the response")
@@ -107,7 +99,7 @@ public class ApiTest {
                       "}";
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
-        
+
         // Act
         ValidatableResponse response = apiClient.sendPut(
             url,
@@ -117,15 +109,11 @@ public class ApiTest {
             pathParams,
             new HashMap<>()  // queryParams
         );
-        
+
         // Assert
-        response
-            .body("title", equalTo("Updated Post"))
-            .body("body", equalTo("This post has been updated"))
-            .body("userId", equalTo(1))
-            .body("id", equalTo(1));
+        apiAssertions.assertPostDetails(response, 1, "Updated Post", "This post has been updated", 1);
     }
-    
+
     @Test
     @DisplayName("Delete a post")
     @Description("Test deletes a post and verifies the response")
@@ -135,7 +123,7 @@ public class ApiTest {
         String url = baseUrl + "/posts/{id}";
         Map<String, String> pathParams = new HashMap<>();
         pathParams.put("id", "1");
-        
+
         // Act
         apiClient.sendDelete(
             url,
@@ -144,10 +132,10 @@ public class ApiTest {
             pathParams,
             new HashMap<>()   // queryParams
         );
-        
+
         // No explicit assertion needed as sendDelete will assert status code 200
     }
-    
+
     @ParameterizedTest(name = "Get post with ID: {0}")
     @MethodSource("getPostIds")
     @DisplayName("Get posts by different IDs")
@@ -158,7 +146,7 @@ public class ApiTest {
         String url = baseUrl + "/posts/{id}";
         Map<String, String> pathParams = new HashMap<>();
         pathParams.put("id", String.valueOf(postId));
-        
+
         // Act
         ValidatableResponse response = apiClient.sendGet(
             url,
@@ -167,16 +155,15 @@ public class ApiTest {
             new HashMap<>(),  // queryParams
             new HashMap<>()   // cookies
         );
-        
+
         // Assert
-        response
-            .statusCode(200)
-            .body("id", equalTo(postId))
-            .body("userId", notNullValue())
-            .body("title", notNullValue())
-            .body("body", notNullValue());
+        apiAssertions.assertStatusCode(response, 200);
+        apiAssertions.assertBodyFieldEquals(response, "id", postId);
+        apiAssertions.assertBodyFieldNotNull(response, "userId");
+        apiAssertions.assertBodyFieldNotNull(response, "title");
+        apiAssertions.assertBodyFieldNotNull(response, "body");
     }
-    
+
     /**
      * Provides test data for API tests
      * @return Stream of post IDs

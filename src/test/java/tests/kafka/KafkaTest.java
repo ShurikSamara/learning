@@ -1,5 +1,6 @@
 package tests.kafka;
 
+import assertion.KafkaAssertions;
 import clients.KafkaBrokerClient;
 import clients.base.kafka.impl.KafkaImpl;
 import io.qameta.allure.Description;
@@ -19,19 +20,19 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 import static config.PropsConfig.getProps;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Epic("Kafka Tests")
 @Feature("Message Processing")
 public class KafkaTest {
 
     private KafkaBrokerClient brokerClient;
+    private KafkaAssertions kafkaAssertions;
     private final String kafkaUrl = getProps().kafkaCluster();
 
     @BeforeEach
     void setUp() {
         brokerClient = new KafkaBrokerClient(new KafkaImpl());
+        kafkaAssertions = new KafkaAssertions();
     }
 
     @Test
@@ -52,9 +53,7 @@ public class KafkaTest {
 
         // Assert
         List<String> messages = brokerClient.getMessages(kafkaUrl, topic, key);
-        assertFalse(messages.isEmpty(), "No messages received");
-        assertTrue(messages.stream().anyMatch(msg -> msg.contains(key)), 
-                "Message with key " + key + " not found");
+        kafkaAssertions.assertMessageWithKeyReceived(messages, key, topic);
     }
 
     @ParameterizedTest(name = "Send message with payload: {0}")
@@ -75,9 +74,7 @@ public class KafkaTest {
 
         // Assert
         List<String> messages = brokerClient.getMessages(kafkaUrl, topic, key);
-        assertFalse(messages.isEmpty(), "No messages received");
-        assertTrue(messages.stream().anyMatch(msg -> msg.equals(payload)), 
-                "Message with payload not found");
+        kafkaAssertions.assertMessageWithPayloadReceived(messages, payload, topic);
     }
 
     /**
